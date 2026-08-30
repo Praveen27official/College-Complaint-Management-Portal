@@ -302,18 +302,20 @@ export const AdminPortal: FC<AdminPortalProps> = ({ onAdminAuthChange, onNavigat
             </div>
 
             {/* Default Password Hint & Demo Autofill */}
-            <div className="p-3 bg-slate-50 rounded-lg border border-slate-200 text-xs text-slate-700 flex items-center justify-between gap-2">
-              <div className="flex items-center gap-1.5">
-                <Key className="w-3.5 h-3.5 text-[#1E3A8A] shrink-0" />
-                <span>Default dev password: <strong className="font-mono bg-white px-1.5 py-0.5 rounded border border-slate-300">admin123</strong></span>
+            <div className="p-3 bg-slate-50 rounded-lg border border-slate-200 text-xs text-slate-700 space-y-2">
+              <div className="flex items-center justify-between gap-2">
+                <div className="flex items-center gap-1.5">
+                  <Key className="w-3.5 h-3.5 text-[#1E3A8A] shrink-0" />
+                  <span>Admin password: <strong className="font-mono bg-white px-1.5 py-0.5 rounded border border-slate-300">Praveen@admin</strong></span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setPasswordInput('Praveen@admin')}
+                  className="text-[11px] font-bold text-[#1E3A8A] hover:underline cursor-pointer uppercase tracking-wider"
+                >
+                  Autofill
+                </button>
               </div>
-              <button
-                type="button"
-                onClick={() => setPasswordInput('admin123')}
-                className="text-[11px] font-bold text-[#1E3A8A] hover:underline cursor-pointer uppercase tracking-wider"
-              >
-                Autofill
-              </button>
             </div>
 
             <button
