@@ -1,0 +1,6 @@
+{
+  "name": "College Complaint Management System",
+  "description": "A centralized portal for students to submit and track college complaints across hostels, mess, academics, and infrastructure, with a secure administrative dashboard for status resolution.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
