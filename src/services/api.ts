@@ -12,22 +12,47 @@ const API_BASE = import.meta.env.VITE_API_URL
   ? `${import.meta.env.VITE_API_URL.replace(/\/$/, '')}/api`
   : '/api';
 
+async function safeFetchJson<T = any>(url: string, options?: RequestInit): Promise<T> {
+  try {
+    const response = await fetch(url, options);
+    const contentType = response.headers.get('content-type') || '';
+
+    if (contentType.includes('application/json')) {
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.message || `Request failed with status ${response.status}`);
+      }
+      return data as T;
+    }
+
+    const text = await response.text();
+    if (!response.ok) {
+      throw new Error(`Server returned status ${response.status}`);
+    }
+
+    try {
+      return JSON.parse(text) as T;
+    } catch {
+      throw new Error('Server returned an unexpected format. Please ensure backend is running.');
+    }
+  } catch (err: any) {
+    if (err.message && !err.message.includes('Unexpected token')) {
+      throw err;
+    }
+    throw new Error(err.message || 'Unable to connect to server. Please try again.');
+  }
+}
+
 export async function submitComplaint(input: CreateComplaintInput): Promise<{
   success: boolean;
   message?: string;
   complaint?: Complaint;
 }> {
-  const response = await fetch(`${API_BASE}/complaints`, {
+  return safeFetchJson(`${API_BASE}/complaints`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(input),
   });
-
-  const data = await response.json();
-  if (!response.ok) {
-    throw new Error(data.message || 'Failed to submit complaint');
-  }
-  return data;
 }
 
 export async function trackComplaint(referenceId: string): Promise<{
@@ -35,12 +60,7 @@ export async function trackComplaint(referenceId: string): Promise<{
   message?: string;
   complaint?: Complaint;
 }> {
-  const response = await fetch(`${API_BASE}/complaints/track/${encodeURIComponent(referenceId.trim())}`);
-  const data = await response.json();
-  if (!response.ok) {
-    throw new Error(data.message || 'Complaint not found');
-  }
-  return data;
+  return safeFetchJson(`${API_BASE}/complaints/track/${encodeURIComponent(referenceId.trim())}`);
 }
 
 export async function verifyAdminPassword(password: string): Promise<{
@@ -49,17 +69,11 @@ export async function verifyAdminPassword(password: string): Promise<{
   token?: string;
   isDefaultPassword?: boolean;
 }> {
-  const response = await fetch(`${API_BASE}/admin/verify`, {
+  return safeFetchJson(`${API_BASE}/admin/verify`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ password }),
   });
-
-  const data = await response.json();
-  if (!response.ok) {
-    throw new Error(data.message || 'Invalid admin password');
-  }
-  return data;
 }
 
 export async function getAdminComplaints(
@@ -75,18 +89,12 @@ export async function getAdminComplaints(
   if (filters?.search) params.set('search', filters.search);
 
   const query = params.toString() ? `?${params.toString()}` : '';
-  const response = await fetch(`${API_BASE}/admin/complaints${query}`, {
+  return safeFetchJson(`${API_BASE}/admin/complaints${query}`, {
     headers: {
       'x-admin-password': adminToken,
       'Content-Type': 'application/json',
     },
   });
-
-  const data = await response.json();
-  if (!response.ok) {
-    throw new Error(data.message || 'Failed to fetch complaints');
-  }
-  return data;
 }
 
 export async function updateComplaint(
@@ -98,7 +106,7 @@ export async function updateComplaint(
   message?: string;
   complaint?: Complaint;
 }> {
-  const response = await fetch(`${API_BASE}/admin/complaints/${encodeURIComponent(id)}`, {
+  return safeFetchJson(`${API_BASE}/admin/complaints/${encodeURIComponent(id)}`, {
     method: 'PATCH',
     headers: {
       'x-admin-password': adminToken,
@@ -106,12 +114,6 @@ export async function updateComplaint(
     },
     body: JSON.stringify(update),
   });
-
-  const data = await response.json();
-  if (!response.ok) {
-    throw new Error(data.message || 'Failed to update complaint');
-  }
-  return data;
 }
 
 export async function deleteComplaint(
@@ -121,26 +123,16 @@ export async function deleteComplaint(
   success: boolean;
   message?: string;
 }> {
-  const response = await fetch(`${API_BASE}/admin/complaints/${encodeURIComponent(id)}`, {
+  return safeFetchJson(`${API_BASE}/admin/complaints/${encodeURIComponent(id)}`, {
     method: 'DELETE',
     headers: {
       'x-admin-password': adminToken,
     },
   });
-
-  const data = await response.json();
-  if (!response.ok) {
-    throw new Error(data.message || 'Failed to delete complaint');
-  }
-  return data;
 }
 
 export async function fetchStats(): Promise<ComplaintStats> {
-  const response = await fetch(`${API_BASE}/admin/stats`);
-  const data = await response.json();
-  if (!response.ok) {
-    throw new Error(data.message || 'Failed to fetch stats');
-  }
+  const data = await safeFetchJson<{ success: boolean; stats: ComplaintStats }>(`${API_BASE}/admin/stats`);
   return data.stats;
 }
 
@@ -148,11 +140,11 @@ export async function fetchDbStatus(): Promise<{
   status: DatabaseStatus;
   sqlSchema: string;
 }> {
-  const response = await fetch(`${API_BASE}/db/status`);
-  const data = await response.json();
-  if (!response.ok) {
-    throw new Error('Failed to fetch database status');
-  }
+  const data = await safeFetchJson<{
+    success: boolean;
+    status: DatabaseStatus;
+    sqlSchema: string;
+  }>(`${API_BASE}/db/status`);
   return {
     status: data.status,
     sqlSchema: data.sqlSchema,
