@@ -15,6 +15,11 @@ let memoryComplaints: Complaint[] = [
     adminRemark: 'Network engineering team has been assigned. Replacement router requested from IT inventory.',
     createdAt: new Date(Date.now() - 36 * 3600 * 1000).toISOString(),
     updatedAt: new Date(Date.now() - 12 * 3600 * 1000).toISOString(),
+    paymentStatus: 'Paid',
+    paymentAmount: 50,
+    paymentId: 'pay_N0x8472948271',
+    paymentMethod: 'Razorpay UPI (Test)',
+    paidAt: new Date(Date.now() - 36 * 3600 * 1000).toISOString(),
   },
   {
     id: 'c-102',
@@ -29,6 +34,11 @@ let memoryComplaints: Complaint[] = [
     createdAt: new Date(Date.now() - 72 * 3600 * 1000).toISOString(),
     updatedAt: new Date(Date.now() - 6 * 3600 * 1000).toISOString(),
     resolvedAt: new Date(Date.now() - 6 * 3600 * 1000).toISOString(),
+    paymentStatus: 'Paid',
+    paymentAmount: 50,
+    paymentId: 'pay_N0x3918274011',
+    paymentMethod: 'Razorpay Card (Test)',
+    paidAt: new Date(Date.now() - 72 * 3600 * 1000).toISOString(),
   },
   {
     id: 'c-103',
@@ -42,6 +52,11 @@ let memoryComplaints: Complaint[] = [
     adminRemark: '',
     createdAt: new Date(Date.now() - 4 * 3600 * 1000).toISOString(),
     updatedAt: new Date(Date.now() - 4 * 3600 * 1000).toISOString(),
+    paymentStatus: 'Paid',
+    paymentAmount: 50,
+    paymentId: 'pay_N0x5519283746',
+    paymentMethod: 'Razorpay Instant (Free Test)',
+    paidAt: new Date(Date.now() - 4 * 3600 * 1000).toISOString(),
   },
   {
     id: 'c-104',
@@ -55,6 +70,11 @@ let memoryComplaints: Complaint[] = [
     adminRemark: '',
     createdAt: new Date(Date.now() - 18 * 3600 * 1000).toISOString(),
     updatedAt: new Date(Date.now() - 18 * 3600 * 1000).toISOString(),
+    paymentStatus: 'Paid',
+    paymentAmount: 50,
+    paymentId: 'pay_N0x9043819284',
+    paymentMethod: 'Razorpay NetBanking (Test)',
+    paidAt: new Date(Date.now() - 18 * 3600 * 1000).toISOString(),
   }
 ];
 
@@ -147,6 +167,11 @@ function mapDbRowToComplaint(row: any): Complaint {
     createdAt: row.created_at || row.createdAt || new Date().toISOString(),
     updatedAt: row.updated_at || row.updatedAt || new Date().toISOString(),
     resolvedAt: row.resolved_at || row.resolvedAt || undefined,
+    paymentStatus: row.payment_status || row.paymentStatus || 'Paid',
+    paymentAmount: row.payment_amount ?? row.paymentAmount ?? 50,
+    paymentId: row.payment_id || row.paymentId || undefined,
+    paymentMethod: row.payment_method || row.paymentMethod || undefined,
+    paidAt: row.paid_at || row.paidAt || undefined,
   };
 }
 
@@ -164,12 +189,18 @@ function mapComplaintToDbRow(complaint: Partial<Complaint>) {
     created_at: complaint.createdAt,
     updated_at: complaint.updatedAt,
     resolved_at: complaint.resolvedAt || null,
+    payment_status: complaint.paymentStatus || 'Paid',
+    payment_amount: complaint.paymentAmount ?? 50,
+    payment_id: complaint.paymentId || null,
+    payment_method: complaint.paymentMethod || null,
+    paid_at: complaint.paidAt || null,
   };
 }
 
 export async function createComplaint(input: CreateComplaintInput): Promise<Complaint> {
   const referenceId = generateReferenceId();
   const now = new Date().toISOString();
+  const paymentId = input.paymentId || ('pay_' + Math.random().toString(36).substring(2, 12).toUpperCase());
   const newComplaint: Complaint = {
     id: 'c-' + Math.random().toString(36).substring(2, 9),
     referenceId,
@@ -182,6 +213,11 @@ export async function createComplaint(input: CreateComplaintInput): Promise<Comp
     adminRemark: '',
     createdAt: now,
     updatedAt: now,
+    paymentStatus: input.paymentStatus || 'Paid',
+    paymentAmount: input.paymentAmount ?? 50,
+    paymentId,
+    paymentMethod: input.paymentMethod || 'Razorpay Free Sandbox',
+    paidAt: input.paidAt || now,
   };
 
   const client = initSupabase();

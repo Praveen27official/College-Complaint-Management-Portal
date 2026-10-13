@@ -31,9 +31,13 @@ import {
   getAdminComplaints, 
   updateComplaint, 
   deleteComplaint, 
-  fetchStats 
+  fetchStats,
+  fetchRazorpayConfig,
+  RazorpayConfigResponse
 } from '../services/api';
 import { StatusBadge, CategoryBadge, PriorityBadge } from './StatusBadge';
+import { PaymentReceiptModal } from './PaymentReceiptModal';
+import { Zap, FileText, BadgeAlert } from 'lucide-react';
 
 interface AdminPortalProps {
   onAdminAuthChange: (isAuth: boolean) => void;
@@ -64,9 +68,18 @@ export const AdminPortal: FC<AdminPortalProps> = ({ onAdminAuthChange, onNavigat
 
   // Selected complaint for editing/modal
   const [activeModalComplaint, setActiveModalComplaint] = useState<Complaint | null>(null);
+  const [receiptComplaint, setReceiptComplaint] = useState<Complaint | null>(null);
   const [newStatus, setNewStatus] = useState<ComplaintStatus>('Pending');
   const [newRemark, setNewRemark] = useState('');
   const [modalFeedback, setModalFeedback] = useState<string | null>(null);
+
+  // Razorpay Live Configuration states
+  const [rzpConfig, setRzpConfig] = useState<RazorpayConfigResponse | null>(null);
+  const [showRzpGuideModal, setShowRzpGuideModal] = useState(false);
+
+  useEffect(() => {
+    fetchRazorpayConfig().then(setRzpConfig).catch(() => {});
+  }, []);
 
   // Load complaints and stats when authenticated
   useEffect(() => {
@@ -395,34 +408,34 @@ export const AdminPortal: FC<AdminPortalProps> = ({ onAdminAuthChange, onNavigat
 
       {/* Summary Statistics Dashboard */}
       {stats && (
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-          <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-xs">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3.5">
+          <div className="bg-white p-4 sm:p-5 rounded-xl border border-slate-200 shadow-xs">
             <span className="text-xs font-bold text-slate-400 uppercase tracking-wider block">Total Logged</span>
             <div className="flex items-baseline justify-between mt-2">
-              <span className="text-3xl font-extrabold text-slate-900 font-mono">{stats.total}</span>
-              <span className="text-xs text-slate-400">All categories</span>
+              <span className="text-2xl sm:text-3xl font-extrabold text-slate-900 font-mono">{stats.total}</span>
+              <span className="text-[11px] text-slate-400">All cases</span>
             </div>
           </div>
 
           <div 
             onClick={() => setSelectedStatus('Pending')}
-            className={`bg-white p-5 rounded-xl border transition-all cursor-pointer shadow-xs ${
+            className={`bg-white p-4 sm:p-5 rounded-xl border transition-all cursor-pointer shadow-xs ${
               selectedStatus === 'Pending' ? 'border-yellow-400 ring-2 ring-yellow-200' : 'border-slate-200 hover:border-yellow-300'
             }`}
           >
             <div className="flex items-center justify-between">
-              <span className="text-xs font-bold text-yellow-700 uppercase tracking-wider">Pending Action</span>
+              <span className="text-xs font-bold text-yellow-700 uppercase tracking-wider">Pending</span>
               <span className="w-2.5 h-2.5 rounded-full bg-yellow-400 animate-pulse"></span>
             </div>
             <div className="flex items-baseline justify-between mt-2">
-              <span className="text-3xl font-extrabold text-yellow-900 font-mono">{stats.pending}</span>
-              <span className="text-xs font-semibold text-yellow-700">Needs review</span>
+              <span className="text-2xl sm:text-3xl font-extrabold text-yellow-900 font-mono">{stats.pending}</span>
+              <span className="text-[11px] font-semibold text-yellow-700">Needs action</span>
             </div>
           </div>
 
           <div 
             onClick={() => setSelectedStatus('In Progress')}
-            className={`bg-white p-5 rounded-xl border transition-all cursor-pointer shadow-xs ${
+            className={`bg-white p-4 sm:p-5 rounded-xl border transition-all cursor-pointer shadow-xs ${
               selectedStatus === 'In Progress' ? 'border-blue-500 ring-2 ring-blue-200' : 'border-slate-200 hover:border-blue-300'
             }`}
           >
@@ -431,14 +444,14 @@ export const AdminPortal: FC<AdminPortalProps> = ({ onAdminAuthChange, onNavigat
               <RotateCw className="w-3.5 h-3.5 text-blue-600 animate-spin-slow" />
             </div>
             <div className="flex items-baseline justify-between mt-2">
-              <span className="text-3xl font-extrabold text-blue-900 font-mono">{stats.inProgress}</span>
-              <span className="text-xs font-semibold text-blue-700">Assigned</span>
+              <span className="text-2xl sm:text-3xl font-extrabold text-blue-900 font-mono">{stats.inProgress}</span>
+              <span className="text-[11px] font-semibold text-blue-700">Assigned</span>
             </div>
           </div>
 
           <div 
             onClick={() => setSelectedStatus('Resolved')}
-            className={`bg-white p-5 rounded-xl border transition-all cursor-pointer shadow-xs ${
+            className={`bg-white p-4 sm:p-5 rounded-xl border transition-all cursor-pointer shadow-xs ${
               selectedStatus === 'Resolved' ? 'border-emerald-500 ring-2 ring-emerald-200' : 'border-slate-200 hover:border-emerald-300'
             }`}
           >
@@ -447,8 +460,38 @@ export const AdminPortal: FC<AdminPortalProps> = ({ onAdminAuthChange, onNavigat
               <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
             </div>
             <div className="flex items-baseline justify-between mt-2">
-              <span className="text-3xl font-extrabold text-emerald-900 font-mono">{stats.resolved}</span>
-              <span className="text-xs font-semibold text-emerald-700">{stats.resolutionRate}% Rate</span>
+              <span className="text-2xl sm:text-3xl font-extrabold text-emerald-900 font-mono">{stats.resolved}</span>
+              <span className="text-[11px] font-semibold text-emerald-700">{stats.resolutionRate}% Rate</span>
+            </div>
+          </div>
+
+          <div 
+            onClick={() => setShowRzpGuideModal(true)}
+            className="bg-gradient-to-br from-sky-50 to-blue-50/80 p-4 sm:p-5 rounded-xl border border-sky-200 shadow-xs col-span-2 sm:col-span-1 cursor-pointer hover:border-sky-400 transition-all group"
+            title="Click to view Real-Time Razorpay Live Gateway Status & Setup Details"
+          >
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-bold text-[#0284C7] uppercase tracking-wider flex items-center gap-1">
+                <Zap className="w-3 h-3 fill-current" /> Razorpay Fees
+              </span>
+              {rzpConfig?.isLive ? (
+                <span className="text-[9px] bg-emerald-100 text-emerald-800 font-bold px-1.5 py-0.5 rounded uppercase border border-emerald-300 flex items-center gap-1">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                  LIVE GATEWAY
+                </span>
+              ) : (
+                <span className="text-[9px] bg-amber-100 text-amber-900 font-bold px-1.5 py-0.5 rounded uppercase border border-amber-200">
+                  SANDBOX / DEMO
+                </span>
+              )}
+            </div>
+            <div className="flex items-baseline justify-between mt-2">
+              <span className="text-2xl sm:text-3xl font-extrabold text-[#0C2340] font-mono">
+                ₹{stats.total * 50}
+              </span>
+              <span className="text-[11px] font-medium text-slate-500 group-hover:text-[#0284C7] transition-colors">
+                ₹50 × {stats.total} • Setup Details →
+              </span>
             </div>
           </div>
         </div>
@@ -573,9 +616,10 @@ export const AdminPortal: FC<AdminPortalProps> = ({ onAdminAuthChange, onNavigat
                 <tr className="bg-slate-50/80 border-b border-slate-200 text-slate-500 uppercase tracking-wider text-[10px] font-bold">
                   <th className="py-3.5 px-4">Ref ID</th>
                   <th className="py-3.5 px-3">Category</th>
-                  <th className="py-3.5 px-4 min-w-[200px]">Description & Remarks</th>
+                  <th className="py-3.5 px-4 min-w-[180px]">Description & Remarks</th>
                   <th className="py-3.5 px-3">Location</th>
                   <th className="py-3.5 px-3">Status</th>
+                  <th className="py-3.5 px-3">Fee (Razorpay)</th>
                   <th className="py-3.5 px-3">Submitted</th>
                   <th className="py-3.5 px-4 text-right">Actions</th>
                 </tr>
@@ -622,6 +666,17 @@ export const AdminPortal: FC<AdminPortalProps> = ({ onAdminAuthChange, onNavigat
                     {/* Status Badge */}
                     <td className="py-3.5 px-3 whitespace-nowrap">
                       <StatusBadge status={c.status} size="sm" />
+                    </td>
+
+                    {/* Fee (Razorpay) */}
+                    <td className="py-3.5 px-3 whitespace-nowrap">
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-sky-50 text-sky-800 border border-sky-200">
+                        <Zap className="w-2.5 h-2.5 text-[#0284C7] fill-current" />
+                        <span>₹{c.paymentAmount || 50} Paid</span>
+                      </span>
+                      <span className="block text-[9px] font-mono text-slate-400 mt-0.5 truncate max-w-[90px]" title={c.paymentId}>
+                        {c.paymentId ? c.paymentId.slice(0, 10) + '...' : 'pay_rzp_test'}
+                      </span>
                     </td>
 
                     {/* Date */}
@@ -720,6 +775,35 @@ export const AdminPortal: FC<AdminPortalProps> = ({ onAdminAuthChange, onNavigat
                 </div>
               </div>
 
+              {/* Razorpay Payment Verification Box */}
+              <div className="p-3.5 bg-sky-50/70 rounded-lg border border-sky-200 flex items-center justify-between gap-3 text-xs">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-7 h-7 rounded-md bg-[#0284C7] text-white flex items-center justify-center shrink-0">
+                    <Zap className="w-3.5 h-3.5 fill-current" />
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <span className="font-bold text-[#0C2340]">Razorpay Fee: ₹{activeModalComplaint.paymentAmount || 50}.00</span>
+                      <span className="text-[10px] bg-emerald-100 text-emerald-800 px-1.5 py-0.2 rounded font-bold uppercase">
+                        Paid (Free Test)
+                      </span>
+                    </div>
+                    <div className="font-mono text-[11px] text-slate-500 mt-0.5">
+                      {activeModalComplaint.paymentId || 'pay_rzp_TEST50FREE'}
+                    </div>
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => setReceiptComplaint(activeModalComplaint)}
+                  className="inline-flex items-center gap-1 px-2.5 py-1.5 bg-white hover:bg-slate-50 border border-slate-300 rounded text-xs font-bold text-slate-700 shadow-2xs cursor-pointer"
+                >
+                  <FileText className="w-3 h-3 text-[#0284C7]" />
+                  <span>Receipt</span>
+                </button>
+              </div>
+
               {/* Status Selector */}
               <div>
                 <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">
@@ -807,6 +891,129 @@ export const AdminPortal: FC<AdminPortalProps> = ({ onAdminAuthChange, onNavigat
               </button>
             </div>
 
+          </div>
+        </div>
+      )}
+
+      {/* Admin Receipt Viewer Modal */}
+      {receiptComplaint && (
+        <PaymentReceiptModal
+          isOpen={!!receiptComplaint}
+          onClose={() => setReceiptComplaint(null)}
+          complaint={receiptComplaint}
+        />
+      )}
+
+      {/* Razorpay Live Gateway Setup & Details Modal */}
+      {showRzpGuideModal && (
+        <div 
+          className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-900/75 backdrop-blur-xs animate-fadeIn"
+          role="dialog"
+          aria-modal="true"
+        >
+          <div 
+            className="bg-white w-full max-w-xl rounded-2xl shadow-2xl border border-slate-200 overflow-hidden flex flex-col transition-all max-h-[90vh]"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="bg-[#0C2340] text-white p-5 relative">
+              <button
+                type="button"
+                onClick={() => setShowRzpGuideModal(false)}
+                className="absolute top-4 right-4 text-slate-300 hover:text-white p-1 rounded-lg hover:bg-white/10 transition-colors cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+
+              <div className="flex items-center gap-2 mb-2">
+                <span className="bg-[#0284C7] text-white font-black text-[10px] px-2 py-0.5 rounded uppercase">
+                  Razorpay Live Gateway
+                </span>
+                {rzpConfig?.isLive ? (
+                  <span className="bg-emerald-950 text-emerald-300 border border-emerald-500/40 text-[10px] font-bold px-2 py-0.5 rounded-full flex items-center gap-1">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+                    ACTIVE LIVE
+                  </span>
+                ) : (
+                  <span className="bg-amber-950 text-amber-300 border border-amber-500/40 text-[10px] font-bold px-2 py-0.5 rounded-full">
+                    SANDBOX / TEST MODE
+                  </span>
+                )}
+              </div>
+
+              <h2 className="text-xl font-bold tracking-tight text-white flex items-center gap-2">
+                <Zap className="w-5 h-5 text-sky-400 fill-current" />
+                Real-Time Razorpay Integration Details
+              </h2>
+              <p className="text-xs text-slate-300 mt-1">
+                Everything required to collect real money from students directly into your bank account.
+              </p>
+            </div>
+
+            <div className="p-5 sm:p-6 overflow-y-auto space-y-4 text-xs text-slate-700">
+              <div className="p-3.5 bg-slate-50 rounded-xl border border-slate-200 space-y-1">
+                <span className="font-bold text-slate-900 block text-xs">Current Gateway Status</span>
+                <div className="font-mono text-xs text-slate-600 space-y-0.5">
+                  <div>Mode: <strong>{rzpConfig?.mode || 'SANDBOX'}</strong></div>
+                  <div>Key ID: <strong>{rzpConfig?.keyId || 'Not set in env'}</strong></div>
+                  <div>Fee per complaint: <strong>₹50.00 INR</strong></div>
+                </div>
+              </div>
+
+              <div className="space-y-3">
+                <h4 className="font-bold text-slate-900 uppercase tracking-wider text-[11px] text-slate-400">
+                  4 Details Needed to Collect Real Money:
+                </h4>
+
+                <div className="p-3 bg-white rounded-lg border border-slate-200 space-y-1">
+                  <span className="font-bold text-slate-900 block">1. Active Razorpay Merchant Account</span>
+                  <p className="text-slate-600 text-[11px]">
+                    Create an account at <strong>razorpay.com</strong>. Complete business or individual KYC (PAN card, registered name, business/educational profile).
+                  </p>
+                </div>
+
+                <div className="p-3 bg-white rounded-lg border border-slate-200 space-y-1">
+                  <span className="font-bold text-slate-900 block">2. Linked Bank Account (For Automated Settlements)</span>
+                  <p className="text-slate-600 text-[11px]">
+                    Under Razorpay Dashboard &gt; <em>Settings &gt; Bank Accounts</em>, add the College or Organization Bank Account (Account Number + IFSC Code). All collected ₹50 fees are credited on a T+2 daily schedule.
+                  </p>
+                </div>
+
+                <div className="p-3 bg-white rounded-lg border border-slate-200 space-y-1">
+                  <span className="font-bold text-slate-900 block">3. Generate Live API Keys</span>
+                  <p className="text-slate-600 text-[11px]">
+                    Switch dashboard toggle to <strong>Live Mode</strong>. Navigate to <em>Settings &gt; API Keys &gt; Generate Key</em> to retrieve:
+                  </p>
+                  <ul className="list-disc list-inside mt-1 font-mono text-[11px] text-[#1E3A8A] space-y-0.5">
+                    <li>RAZORPAY_KEY_ID (starts with <code>rzp_live_...</code>)</li>
+                    <li>RAZORPAY_KEY_SECRET (your private key secret)</li>
+                  </ul>
+                </div>
+
+                <div className="p-3 bg-white rounded-lg border border-slate-200 space-y-1">
+                  <span className="font-bold text-slate-900 block">4. Add Environment Variables to Your Server/Deployment</span>
+                  <p className="text-slate-600 text-[11px]">
+                    In Render, Vercel, or your server's <code>.env</code> file:
+                  </p>
+                  <pre className="p-2.5 bg-slate-900 text-emerald-400 rounded-md font-mono text-[11px] overflow-x-auto">
+{`RAZORPAY_KEY_ID="rzp_live_your_actual_key_id"
+RAZORPAY_KEY_SECRET="your_actual_key_secret"`}
+                  </pre>
+                  <p className="text-[11px] text-slate-500 mt-1">
+                    Once saved, the server automatically enables official live checkout with real UPI (Google Pay, PhonePe, Paytm, QR) and Debit/Credit card processing.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <div className="p-4 bg-slate-50 border-t border-slate-200 flex justify-end">
+              <button
+                type="button"
+                onClick={() => setShowRzpGuideModal(false)}
+                className="px-4 py-2 bg-slate-800 hover:bg-slate-900 text-white rounded-lg text-xs font-bold uppercase tracking-wider cursor-pointer"
+              >
+                Close
+              </button>
+            </div>
           </div>
         </div>
       )}

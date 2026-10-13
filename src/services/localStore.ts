@@ -15,6 +15,11 @@ const INITIAL_COMPLAINTS: Complaint[] = [
     adminRemark: 'Network engineering team has been assigned. Replacement router requested from IT inventory.',
     createdAt: new Date(Date.now() - 36 * 3600 * 1000).toISOString(),
     updatedAt: new Date(Date.now() - 12 * 3600 * 1000).toISOString(),
+    paymentStatus: 'Paid',
+    paymentAmount: 50,
+    paymentId: 'pay_N0x8472948271',
+    paymentMethod: 'Razorpay UPI (Test)',
+    paidAt: new Date(Date.now() - 36 * 3600 * 1000).toISOString(),
   },
   {
     id: 'c-102',
@@ -29,6 +34,11 @@ const INITIAL_COMPLAINTS: Complaint[] = [
     createdAt: new Date(Date.now() - 72 * 3600 * 1000).toISOString(),
     updatedAt: new Date(Date.now() - 6 * 3600 * 1000).toISOString(),
     resolvedAt: new Date(Date.now() - 6 * 3600 * 1000).toISOString(),
+    paymentStatus: 'Paid',
+    paymentAmount: 50,
+    paymentId: 'pay_N0x3918274011',
+    paymentMethod: 'Razorpay Card (Test)',
+    paidAt: new Date(Date.now() - 72 * 3600 * 1000).toISOString(),
   },
   {
     id: 'c-103',
@@ -42,6 +52,11 @@ const INITIAL_COMPLAINTS: Complaint[] = [
     adminRemark: '',
     createdAt: new Date(Date.now() - 4 * 3600 * 1000).toISOString(),
     updatedAt: new Date(Date.now() - 4 * 3600 * 1000).toISOString(),
+    paymentStatus: 'Paid',
+    paymentAmount: 50,
+    paymentId: 'pay_N0x5519283746',
+    paymentMethod: 'Razorpay Instant (Free Test)',
+    paidAt: new Date(Date.now() - 4 * 3600 * 1000).toISOString(),
   },
   {
     id: 'c-104',
@@ -55,6 +70,11 @@ const INITIAL_COMPLAINTS: Complaint[] = [
     adminRemark: '',
     createdAt: new Date(Date.now() - 18 * 3600 * 1000).toISOString(),
     updatedAt: new Date(Date.now() - 18 * 3600 * 1000).toISOString(),
+    paymentStatus: 'Paid',
+    paymentAmount: 50,
+    paymentId: 'pay_N0x9043819284',
+    paymentMethod: 'Razorpay NetBanking (Test)',
+    paidAt: new Date(Date.now() - 18 * 3600 * 1000).toISOString(),
   },
 ];
 
@@ -90,6 +110,7 @@ export function localSubmitComplaint(input: CreateComplaintInput): Complaint {
   const randomNum = Math.floor(1000 + Math.random() * 9000);
   const referenceId = `CMP-${year}-${randomNum}`;
   const now = new Date().toISOString();
+  const paymentId = input.paymentId || ('pay_' + Math.random().toString(36).substring(2, 12).toUpperCase());
 
   const newComplaint: Complaint = {
     id: 'c-' + Math.random().toString(36).substring(2, 9),
@@ -103,6 +124,11 @@ export function localSubmitComplaint(input: CreateComplaintInput): Complaint {
     adminRemark: '',
     createdAt: now,
     updatedAt: now,
+    paymentStatus: input.paymentStatus || 'Paid',
+    paymentAmount: input.paymentAmount ?? 50,
+    paymentId,
+    paymentMethod: input.paymentMethod || 'Razorpay Free Sandbox',
+    paidAt: input.paidAt || now,
   };
 
   complaints.unshift(newComplaint);

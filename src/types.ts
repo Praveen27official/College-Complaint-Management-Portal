@@ -24,6 +24,11 @@ export interface Complaint {
   createdAt: string;
   updatedAt: string;
   resolvedAt?: string;
+  paymentStatus?: 'Paid' | 'Pending' | 'Waived';
+  paymentAmount?: number;
+  paymentId?: string;
+  paymentMethod?: string;
+  paidAt?: string;
 }
 
 export interface CreateComplaintInput {
@@ -32,6 +37,11 @@ export interface CreateComplaintInput {
   description: string;
   location?: string;
   priority?: ComplaintPriority;
+  paymentStatus?: 'Paid' | 'Pending' | 'Waived';
+  paymentAmount?: number;
+  paymentId?: string;
+  paymentMethod?: string;
+  paidAt?: string;
 }
 
 export interface UpdateComplaintInput {

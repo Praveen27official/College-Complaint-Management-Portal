@@ -68,13 +68,18 @@ git push -u origin main`;
 PORT=3000
 NODE_ENV=production
 ADMIN_PASSWORD=your_secure_admin_password
+# Real-Time Razorpay Payment Gateway (Live Mode)
+RAZORPAY_KEY_ID=rzp_live_your_actual_key_id
+RAZORPAY_KEY_SECRET=your_actual_key_secret
+# Optional Database
 SUPABASE_URL=https://your-project.supabase.co
 SUPABASE_ANON_KEY=your_supabase_anon_key
 SUPABASE_SERVICE_ROLE_KEY=your_supabase_service_role_key
 FRONTEND_URL=https://your-project.vercel.app`;
 
   const VERCEL_ENV = `# Vercel Project -> Settings -> Environment Variables
-VITE_API_URL=https://your-render-backend-url.onrender.com`;
+VITE_API_URL=https://your-render-backend-url.onrender.com
+VITE_RAZORPAY_KEY_ID=rzp_live_your_actual_key_id`;
 
   const SUPABASE_SQL_DEFAULT = `-- Supabase SQL Schema for College Complaint Management System
 -- Run this in your Supabase Project -> SQL Editor

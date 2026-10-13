@@ -1,4 +1,4 @@
-import { useState, FC, FormEvent } from 'react';
+import { useState, useEffect, FC, FormEvent } from 'react';
 import { 
   Send, 
   CheckCircle, 
@@ -17,10 +17,16 @@ import {
   Shield,
   Clock,
   CheckCircle2,
-  Info
+  Info,
+  Zap,
+  CreditCard,
+  FileText,
+  ShieldCheck
 } from 'lucide-react';
 import { Complaint, ComplaintCategory, ComplaintPriority } from '../types';
-import { submitComplaint } from '../services/api';
+import { submitComplaint, fetchRazorpayConfig, RazorpayConfigResponse } from '../services/api';
+import { RazorpayModal, PaymentSuccessData } from './RazorpayModal';
+import { PaymentReceiptModal } from './PaymentReceiptModal';
 
 interface SubmitComplaintProps {
   onSuccess: (complaint: Complaint) => void;
@@ -48,8 +54,19 @@ export const SubmitComplaint: FC<SubmitComplaintProps> = ({ onSuccess, onTrackRe
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [submittedComplaint, setSubmittedComplaint] = useState<Complaint | null>(null);
   const [copied, setCopied] = useState(false);
+  const [copiedPayId, setCopiedPayId] = useState(false);
 
-  const handleSubmit = async (e: FormEvent) => {
+  // Razorpay payment integration states
+  const [showRazorpayModal, setShowRazorpayModal] = useState(false);
+  const [showReceiptModal, setShowReceiptModal] = useState(false);
+  const [lastPayment, setLastPayment] = useState<PaymentSuccessData | null>(null);
+  const [rzpConfig, setRzpConfig] = useState<RazorpayConfigResponse | null>(null);
+
+  useEffect(() => {
+    fetchRazorpayConfig().then(setRzpConfig).catch(() => {});
+  }, []);
+
+  const handleOpenPayment = (e: FormEvent) => {
     e.preventDefault();
     setErrorMessage(null);
 
@@ -63,7 +80,16 @@ export const SubmitComplaint: FC<SubmitComplaintProps> = ({ onSuccess, onTrackRe
       return;
     }
 
+    // Open Razorpay ₹50 Free Test Gateway Modal
+    setShowRazorpayModal(true);
+  };
+
+  const handlePaymentCompleted = async (paymentData: PaymentSuccessData) => {
+    setShowRazorpayModal(false);
+    setLastPayment(paymentData);
     setLoading(true);
+    setErrorMessage(null);
+
     try {
       const res = await submitComplaint({
         studentName: studentName.trim() || undefined,
@@ -71,6 +97,11 @@ export const SubmitComplaint: FC<SubmitComplaintProps> = ({ onSuccess, onTrackRe
         description: description.trim(),
         location: location.trim() || undefined,
         priority,
+        paymentStatus: 'Paid',
+        paymentAmount: paymentData.paymentAmount,
+        paymentId: paymentData.paymentId,
+        paymentMethod: paymentData.paymentMethod,
+        paidAt: paymentData.paidAt,
       });
 
       if (res.success && res.complaint) {
@@ -91,6 +122,14 @@ export const SubmitComplaint: FC<SubmitComplaintProps> = ({ onSuccess, onTrackRe
     setTimeout(() => setCopied(false), 2500);
   };
 
+  const handleCopyPayId = () => {
+    const pId = submittedComplaint?.paymentId || lastPayment?.paymentId;
+    if (!pId) return;
+    navigator.clipboard.writeText(pId);
+    setCopiedPayId(true);
+    setTimeout(() => setCopiedPayId(false), 2500);
+  };
+
   const resetForm = () => {
     setSubmittedComplaint(null);
     setStudentName('');
@@ -99,6 +138,7 @@ export const SubmitComplaint: FC<SubmitComplaintProps> = ({ onSuccess, onTrackRe
     setCategory('Hostel');
     setPriority('Medium');
     setErrorMessage(null);
+    setLastPayment(null);
   };
 
   // If complaint has just been submitted, display the confirmation view
@@ -159,7 +199,47 @@ export const SubmitComplaint: FC<SubmitComplaintProps> = ({ onSuccess, onTrackRe
               </button>
             </div>
 
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mt-5 pt-4 border-t border-slate-200 text-xs text-slate-600">
+            {/* Razorpay Payment Verification Callout */}
+            <div className="mt-4 p-4 rounded-xl bg-sky-50/70 border border-sky-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div className="flex items-start gap-3">
+                <div className="w-8 h-8 rounded-lg bg-[#0284C7] text-white flex items-center justify-center shrink-0 mt-0.5">
+                  <Zap className="w-4 h-4 fill-current" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-bold text-[#0C2340] uppercase tracking-wider">
+                      Razorpay Payment Verified
+                    </span>
+                    <span className="text-[10px] bg-emerald-100 text-emerald-800 font-bold px-2 py-0.5 rounded-full border border-emerald-300">
+                      ₹{submittedComplaint.paymentAmount || 50}.00 PAID (FREE)
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2 mt-1 font-mono text-xs text-slate-600">
+                    <span>ID:</span>
+                    <span className="font-bold text-slate-800">{submittedComplaint.paymentId || 'pay_rzp_DEMO50'}</span>
+                    <button
+                      type="button"
+                      onClick={handleCopyPayId}
+                      className="text-slate-400 hover:text-slate-700 cursor-pointer"
+                      title="Copy Payment ID"
+                    >
+                      {copiedPayId ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setShowReceiptModal(true)}
+                className="inline-flex items-center justify-center gap-1.5 px-3 py-2 bg-white hover:bg-slate-50 text-slate-800 border border-slate-300 rounded-lg text-xs font-bold uppercase tracking-wider shadow-xs cursor-pointer transition-all"
+              >
+                <FileText className="w-3.5 h-3.5 text-[#0284C7]" />
+                <span>View Receipt</span>
+              </button>
+            </div>
+
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mt-4 pt-4 border-t border-slate-200 text-xs text-slate-600">
               <div>
                 <span className="text-slate-400 block text-[10px] font-bold uppercase tracking-wider">Category</span>
                 <span className="font-semibold text-slate-800">{submittedComplaint.category}</span>
@@ -199,6 +279,15 @@ export const SubmitComplaint: FC<SubmitComplaintProps> = ({ onSuccess, onTrackRe
             </button>
           </div>
         </div>
+
+        {/* Printable/Viewable Receipt Modal */}
+        {submittedComplaint && (
+          <PaymentReceiptModal
+            isOpen={showReceiptModal}
+            onClose={() => setShowReceiptModal(false)}
+            complaint={submittedComplaint}
+          />
+        )}
       </div>
     );
   }
@@ -218,7 +307,7 @@ export const SubmitComplaint: FC<SubmitComplaintProps> = ({ onSuccess, onTrackRe
 
       {/* Main Submission Card */}
       <div className="bg-white p-6 sm:p-8 rounded-xl shadow-sm border border-slate-200">
-        <form onSubmit={handleSubmit} className="space-y-6">
+        <form onSubmit={handleOpenPayment} className="space-y-6">
           
           {errorMessage && (
             <div 
@@ -363,28 +452,87 @@ export const SubmitComplaint: FC<SubmitComplaintProps> = ({ onSuccess, onTrackRe
             ></textarea>
           </div>
 
+          {/* Razorpay ₹50 Payment Callout Section */}
+          <div className="p-4 sm:p-5 rounded-xl bg-gradient-to-r from-sky-50 via-blue-50 to-indigo-50 border border-sky-200">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div className="flex items-start gap-3">
+                <div className="w-10 h-10 rounded-xl bg-[#0C2340] text-white flex items-center justify-center shrink-0 shadow-sm">
+                  <Zap className="w-5 h-5 text-sky-400 fill-current" />
+                </div>
+                <div>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="text-xs font-bold text-[#0C2340] uppercase tracking-wider">
+                      Complaint Verification & Filing Fee
+                    </span>
+                    <span className="inline-flex items-center gap-1 bg-[#0284C7] text-white text-[10px] font-black uppercase px-2 py-0.5 rounded shadow-xs">
+                      Razorpay
+                    </span>
+                    {rzpConfig?.isLive ? (
+                      <span className="text-[10px] bg-emerald-100 text-emerald-800 font-bold px-2 py-0.5 rounded-full border border-emerald-300 flex items-center gap-1">
+                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                        LIVE REAL-TIME GATEWAY
+                      </span>
+                    ) : (
+                      <span className="text-[10px] bg-amber-100 text-amber-900 font-bold px-2 py-0.5 rounded-full border border-amber-300">
+                        OFFICIAL CHECKOUT (SANDBOX / LIVE READY)
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-xs text-slate-600 mt-1">
+                    {rzpConfig?.isLive 
+                      ? '₹50 registration fee will be collected via Razorpay (UPI, GPay, PhonePe, Cards, Netbanking) and credited to the college redressal account.'
+                      : 'A nominal ₹50 token fee authenticates your grievance report and generates a verifiable Razorpay transaction receipt. Connect your live keys to collect real money.'}
+                  </p>
+                </div>
+              </div>
+
+              <div className="text-right sm:text-right shrink-0 bg-white/80 backdrop-blur-xs p-3 rounded-lg border border-sky-100 shadow-2xs">
+                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Total Payable</span>
+                <span className="text-xl sm:text-2xl font-black text-[#0C2340]">₹50.00</span>
+                <span className="text-[10px] text-slate-500 font-semibold block">
+                  {rzpConfig?.isLive ? 'Real Money (Live)' : 'Test / Demo Ready'}
+                </span>
+              </div>
+            </div>
+          </div>
+
           {/* Submit Action Button */}
           <button
             id="btn-submit-complaint"
             type="submit"
             disabled={loading}
-            className="w-full bg-[#1E3A8A] text-white font-bold py-4 rounded-lg hover:bg-blue-900 transition-colors shadow-lg shadow-blue-900/10 uppercase tracking-wider text-xs sm:text-sm flex items-center justify-center gap-2 cursor-pointer disabled:opacity-60"
+            className="w-full bg-[#0284C7] hover:bg-[#0369A1] text-white font-bold py-4 rounded-xl transition-all shadow-lg shadow-sky-900/15 uppercase tracking-wider text-xs sm:text-sm flex items-center justify-center gap-2.5 cursor-pointer disabled:opacity-60"
           >
             {loading ? (
               <>
                 <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
-                <span>Submitting Case...</span>
+                <span>Securing Case Registration...</span>
               </>
             ) : (
               <>
-                <Send className="w-4 h-4" />
-                <span>Submit Case</span>
+                <Zap className="w-4 h-4 fill-current text-sky-200" />
+                <span>
+                  {rzpConfig?.isLive 
+                    ? 'Pay ₹50 via Razorpay (Live) & File Complaint' 
+                    : 'Pay ₹50 via Razorpay & File Complaint'}
+                </span>
+                <ArrowRight className="w-4 h-4" />
               </>
             )}
           </button>
 
         </form>
       </div>
+
+      {/* Razorpay Payment Gateway Modal */}
+      <RazorpayModal
+        isOpen={showRazorpayModal}
+        onClose={() => setShowRazorpayModal(false)}
+        onPaymentSuccess={handlePaymentCompleted}
+        studentName={studentName.trim() || undefined}
+        category={category}
+        amount={50}
+      />
 
       {/* System Performance Callout Card */}
       <div className="bg-blue-900 text-white p-6 rounded-xl flex items-center justify-between gap-4 shadow-sm">

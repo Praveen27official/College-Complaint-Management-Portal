@@ -12,11 +12,15 @@ import {
   Copy,
   Check,
   Building,
-  ArrowRight
+  ArrowRight,
+  Zap,
+  FileText,
+  ShieldCheck
 } from 'lucide-react';
 import { Complaint } from '../types';
 import { trackComplaint } from '../services/api';
 import { StatusBadge, CategoryBadge, PriorityBadge } from './StatusBadge';
+import { PaymentReceiptModal } from './PaymentReceiptModal';
 
 interface TrackComplaintProps {
   initialReferenceId?: string;
@@ -34,6 +38,7 @@ export const TrackComplaint: FC<TrackComplaintProps> = ({
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+  const [showReceiptModal, setShowReceiptModal] = useState(false);
 
   useEffect(() => {
     if (initialReferenceId) {
@@ -230,6 +235,38 @@ export const TrackComplaint: FC<TrackComplaintProps> = ({
             </div>
           </div>
 
+          {/* Razorpay Payment Status Banner */}
+          <div className="p-4 rounded-xl bg-gradient-to-r from-sky-50 to-blue-50 border border-sky-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div className="flex items-center gap-3">
+              <div className="w-8 h-8 rounded-lg bg-[#0284C7] text-white flex items-center justify-center shrink-0">
+                <Zap className="w-4 h-4 fill-current" />
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-bold text-[#0C2340] uppercase tracking-wider">
+                    Registration Fee Paid
+                  </span>
+                  <span className="text-[10px] bg-emerald-100 text-emerald-800 font-bold px-2 py-0.5 rounded-full border border-emerald-300">
+                    ₹{complaint.paymentAmount || 50}.00 (Free Test Sandbox)
+                  </span>
+                </div>
+                <div className="flex items-center gap-2 mt-0.5 font-mono text-xs text-slate-600">
+                  <span>Razorpay ID:</span>
+                  <span className="font-bold text-slate-800">{complaint.paymentId || 'pay_rzp_TEST50'}</span>
+                </div>
+              </div>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => setShowReceiptModal(true)}
+              className="inline-flex items-center justify-center gap-1.5 px-3 py-2 bg-white hover:bg-slate-50 text-slate-800 border border-slate-300 rounded-lg text-xs font-bold uppercase tracking-wider shadow-xs cursor-pointer transition-all self-start sm:self-auto"
+            >
+              <FileText className="w-3.5 h-3.5 text-[#0284C7]" />
+              <span>View ₹50 Fee Receipt</span>
+            </button>
+          </div>
+
           {/* Visual Multi-Stage Progress Tracker */}
           <div className="py-2">
             <h4 className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-4">
@@ -358,9 +395,17 @@ export const TrackComplaint: FC<TrackComplaintProps> = ({
             </div>
           </div>
 
+          {/* Printable/Viewable Receipt Modal */}
+          <PaymentReceiptModal
+            isOpen={showReceiptModal}
+            onClose={() => setShowReceiptModal(false)}
+            complaint={complaint}
+          />
+
         </div>
       )}
 
     </div>
   );
 };
+
